@@ -1,111 +1,56 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
+﻿import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { COLORS, SPACE, TYPO } from '../styles/tokens';
 import DiaryCard from '../components/DiaryCard';
+import DiaryDetailModal from '../components/DiaryDetailModal';
+import SearchBar from '../components/SearchBar';
+import EntryForm from '../components/EntryForm';
 
-import bosanImage from '../../assets/moods/bosan.jpg';
-import kumpulImage from '../../assets/moods/kumpul.jpg';
-import mitemImage from '../../assets/moods/mitem.jpg';
-import pp from '../../assets/moods/pp.jpg';
-import pagiImage from '../../assets/moods/pagi.jpg';
-import senjaImage from '../../assets/moods/senja.jpg';
-
-const diaryEntries = [
-  {
-    id: 1,
-    title: 'Senja di Perjalanan Pulang',
-    date: '2026-10-10',
-    preview: 'Sore ini aku pulang setelah menjalani hari yang cukup melelahkan. Langit senja terlihat indah dan membuat pikiranku terasa lebih tenang...',
-    moodImage: senjaImage,
-    moodType: 'tired',
-  },
-  {
-    id: 2,
-    title: 'Memulai Hari dengan Semangat',
-    date: '2026-10-09',
-    preview: 'Pagi ini aku bangun lebih awal, menikmati udara segar, dan bersiap menjalani aktivitas. Semoga hari ini membawa banyak hal baik...',
-    moodImage: pagiImage,
-    moodType: 'calm',
-  },
-  {
-    id: 3,
-    title: 'Hari Penuh Kebahagiaan',
-    date: '2026-10-08',
-    preview: 'Hari ini menyenangkan sekali! Aku menghabiskan waktu bersama orang-orang tersayang, bercanda, tertawa, dan membuat kenangan baru...',
-    moodImage: kumpulImage,
-    moodType: 'cheerful',
-  },
-  {
-    id: 4,
-    title: 'Bosan di Tengah Kesibukan',
-    date: '2026-10-07',
-    preview: 'Hari ini rasanya membosankan. Aku sudah mencoba mencari kegiatan baru, tetapi belum menemukan sesuatu yang menarik untuk dilakukan...',
-    moodImage: bosanImage,
-    moodType: 'bored',
-  },
-  {
-    id: 5,
-    title: 'Waktu untuk Diri Sendiri',
-    date: '2026-10-06',
-    preview: 'Akhirnya ada waktu untuk bersantai di kamar, menonton film favorit, mendengarkan musik, dan menikmati waktu tanpa terburu-buru...',
-    moodImage: mitemImage,
-    moodType: 'calm',
-  },
+const INITIAL_ENTRIES = [
+  { id: 1, title: 'Pagi yang Tenang', date: '2026-10-18', preview: 'Jalan pagi 20 menit dan menikmati udara segar.', body: 'Hari ini aku bangun lebih pagi dan berjalan kaki selama 20 menit.', moodImage: require('../../assets/moods/pagi.jpg') },
+  { id: 2, title: 'Produktif di Kampus', date: '2026-10-17', preview: 'Menyelesaikan modul praktikum dan berdiskusi dengan tim.', body: 'Hari ini cukup produktif karena beberapa target perkuliahan selesai.', moodImage: require('../../assets/moods/kumpul.jpg') },
+  { id: 3, title: 'Senja di Taman', date: '2026-10-16', preview: 'Membaca buku sambil menikmati suasana senja.', body: 'Sore ini saya menikmati waktu di taman sambil membaca buku.', moodImage: require('../../assets/moods/senja.jpg') },
 ];
 
 export default function DiaryListScreen() {
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.headerContainer}>
-        <View>
-          <Text style={styles.welcomeText}>WELCOME,</Text>
-          <Text style={styles.headerTitle}>Buku Harian Daffawi</Text>
-        </View>
-        <Image source={pp} style={styles.avatar} />
-      </View>
+  const [entries, setEntries] = useState(INITIAL_ENTRIES);
+  const [query, setQuery] = useState('');
+  const [likedIds, setLikedIds] = useState(new Set());
+  const [selected, setSelected] = useState(null);
 
-      {diaryEntries.map((entry) => (
-        <DiaryCard
-          key={entry.id}
-          title={entry.title}
-          date={entry.date}
-          preview={entry.preview}
-          moodImage={entry.moodImage}
-          moodType={entry.moodType}
-        />
-      ))}
-    </ScrollView>
+  const filtered = useMemo(() => {
+    if (!query.trim()) return entries;
+    const q = query.toLowerCase();
+    return entries.filter((e) => e.title.toLowerCase().includes(q) || e.preview.toLowerCase().includes(q) || e.date.toLowerCase().includes(q));
+  }, [entries, query]);
+
+  const toggleLike = (id) => {
+    setLikedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const addEntry = (newEntry) => setEntries((prev) => [newEntry, ...prev]);
+
+  const renderItem = ({ item }) => (
+    <DiaryCard title={item.title} date={item.date} preview={item.preview} moodImage={item.moodImage} liked={likedIds.has(item.id)} onToggleLike={() => toggleLike(item.id)} onPress={() => setSelected(item)} />
+  );
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>Buku Harian</Text>
+      <SearchBar onChange={setQuery} />
+      <EntryForm onSubmit={addEntry} />
+      <FlatList data={filtered} keyExtractor={(item) => String(item.id)} renderItem={renderItem} contentContainerStyle={styles.listContent} ListEmptyComponent={<Text style={styles.empty}>Belum ada entri.</Text>} />
+      <DiaryDetailModal visible={!!selected} entry={selected} onClose={() => setSelected(null)} />
+    </View>
   );
 }
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'rgb(255, 255, 255)',
-  },
-  content: {
-    padding: 16,
-  },
-  headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 8,
-  },
-  welcomeText: {
-    fontSize: 14,
-    color: '#7894cc',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: '#c1abbd',
-  },
+  container: { flex: 1, backgroundColor: COLORS.surface },
+  header: { fontSize: TYPO.h1, fontWeight: '700', paddingHorizontal: SPACE.l, paddingTop: SPACE.l, color: COLORS.text },
+  listContent: { padding: SPACE.l, gap: SPACE.m, paddingTop: SPACE.m },
+  empty: { textAlign: 'center', color: COLORS.muted, marginTop: 40 },
 });
